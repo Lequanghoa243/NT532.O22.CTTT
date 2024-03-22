@@ -33,7 +33,7 @@ void loop() {
     delay(1000);
 
     // Blink all LEDs up to the rolled number 6 times
-    for(int j = 0; j < 6; j++) {
+    for(int j = 0; j < 7; j++) {
       for(int i = 0; i < rolledNumber; i++) {
         digitalWrite(ledPins[i], HIGH);
       }
