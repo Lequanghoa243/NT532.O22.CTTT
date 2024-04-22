@@ -1,0 +1,152 @@
+#include <ESP8266WebServer.h>
+#include <ESP8266WiFi.h>
+#include <WiFiClient.h>
+
+const char* ssid = "UiTiOt-E3.1";
+const char* password = "UiTiOtAP";
+
+ESP8266WebServer server(80);
+
+const int ledPins[] = { D3, D4, D5, D6, D7 };
+
+int score = 0;
+int remainingTime = 2000;    // Remaining time to choose remainder (in milliseconds)
+int selectedRemainder = -1;  // Player's selection, initially initialized to an invalid value
+int numOfFlashes;            // Number of flashes in each cycle
+
+void handleRoot() {
+  String content = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'></head><body style='font-family: Arial, sans-serif;'>";
+  content += "<h1 style='text-align:center;'>Remainder Game</h1>";
+  content += "<p style='text-align:center;'>Current Score: " + String(score) + "</p>";
+  content += "<p style='text-align:center;'>Remaining Time: " + String(remainingTime / 1000) + " seconds</p>";
+  content += "<div style='text-align:center;'>";
+  content += "<label for='remainder'>Select the remainder:</label>";
+  content += "<input type='number' id='remainder' min='0' max='3' style='margin-left:5px;'>";
+  content += "<button onclick='submitRemainder()' style='margin-left:5px;'>Submit</button>";
+  content += "</div>";
+  content += "<script>function submitRemainder() {";
+  content += "var remainder = document.getElementById('remainder').value;";
+  content += "window.location.href = '/submit?remainder=' + remainder;";
+  content += "}</script>";
+  content += "</body></html>";
+  server.send(200, "text/html", content);
+}
+
+void handleNotFound() {
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+  for (uint8_t i = 0; i < server.args(); i++) {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+  server.send(404, "text/plain", message);
+}
+
+void setup(void) {
+  Serial.begin(9600);
+  WiFi.begin(ssid, password);
+  Serial.println("");
+
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.print("Connected to ");
+  Serial.println(ssid);
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Initialize LED pins
+  for (int i = 0; i < 5; i++) {
+    pinMode(ledPins[i], OUTPUT);
+  }
+
+  // Turn on LEDs from left to right
+  for (int i = 0; i < 5; i++) {
+    digitalWrite(ledPins[i], HIGH);
+    delay(500);  // Adjust delay time as needed
+  }
+
+  // Turn off all LEDs
+  for (int i = 0; i < 5; i++) {
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  // Turn on LEDs from right to left
+  for (int i = 4; i >= 0; i--) {
+    digitalWrite(ledPins[i], HIGH);
+    delay(500);  // Adjust delay time as needed
+  }
+
+  // Turn off all LEDs
+  for (int i = 0; i < 5; i++) {
+    digitalWrite(ledPins[i], LOW);
+  }
+
+  server.on("/", handleRoot);
+  server.on("/submit", []() {
+    selectedRemainder = server.arg("remainder").toInt();
+    // Logic để kiểm tra xem số dư đã chọn có chính xác không
+    // Update score
+    // Reset game with new random light sequence
+    server.sendHeader("Location", "/");
+    server.send(303);
+  });
+  server.onNotFound(handleNotFound);
+  server.begin();
+  Serial.println("HTTP server started");
+}
+
+void loop(void) {
+  server.handleClient();
+  // Game logic here
+  int randomLED;
+  if (remainingTime > 0) {
+    numOfFlashes = random(1, 6);
+    for (int i = 0; i < numOfFlashes; i++) {
+      // Turn on random LED for 2 seconds
+      randomLED = random(0, 5);
+      digitalWrite(ledPins[randomLED], HIGH);
+      delay(1000);  // Time LED is on
+      digitalWrite(ledPins[randomLED], LOW);
+      delay(1000);  // Time LED is off
+    }
+    remainingTime -= numOfFlashes * 2000;  // Decrease remaining time
+    if (remainingTime < 0) {
+      remainingTime = 0;  // Ensure remainingTime never becomes negative
+    }
+  } else {
+    // Allow player to choose remainder
+    if (selectedRemainder != -1) {
+      // Check if selected remainder is correct and update score accordingly
+      if (selectedRemainder == (numOfFlashes % 3)) {
+        score++;  // Increase score if correct
+      } else {
+        // Decrease score if wrong, but ensure it doesn't go below 0
+        if (score > 0) {
+          score--;  // Decrease score if it's positive
+        }
+      }
+
+      // Reset selected remainder
+      selectedRemainder = -1;
+      remainingTime = 2000;  // Reset remaining time
+
+      // Check score, end game if score equals 0
+      if (score == 0) {
+        // Reset game
+        remainingTime = 2000;  // Reset remaining time
+        // Send back web page to start a new round
+        server.sendHeader("Location", "/");
+        server.send(303);
+      }
+    }
+  }
+}
