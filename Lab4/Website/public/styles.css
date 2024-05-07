@@ -1,0 +1,21 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    color: #333;
+}
+
+form {
+    margin-bottom: 20px;
+}
+
+input[type="text"],
+input[type="number"],
+button {
+    margin-bottom: 10px;
+}
+
+#deviceData {
+    margin-top: 20px;
+}

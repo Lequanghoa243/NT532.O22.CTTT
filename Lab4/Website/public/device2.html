@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Data</title>
+    <style>
+        /* Add your CSS styles here */
+        .sensor-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: white;
+        }
+
+        /* Styles for the buttons */
+        .button {
+            display: inline-block;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div style="width: 100%; height: 100%; position: relative; background: white">
+        <div style="width: 644px; height: 45px; left: 59px; top: 98px; position: absolute; color: black; font-size: 32px; font-family: Inknut Antiqua; font-weight: 700; line-height: 24px; word-wrap: break-word">Device </div>
+        <div id="deviceIdValue" style="width: 644px; height: 45px; left: 155px; top: 98px; position: absolute; color: black; font-size: 32px; font-family: Inknut Antiqua; font-weight: 700; line-height: 24px; word-wrap: break-word"></div>
+        <img style="width: 275px; height: 279px; left: 157px; top: 171px; position: absolute" src="./hu.png" />
+        <img style="width: 254px; height: 264px; left: 590px; top: 186px; position: absolute" src="./temp.png" />
+        <img style="width: 243px; height: 258px; left: 1041px; top: 192px; position: absolute" src="./light.png" />
+        <div style="width: 389px; height: 172px; left: 67px; top: 564px; position: absolute; border: 1px black solid"></div>
+        <div style="width: 357px; left: 99px; top: 586px; position: absolute; color: black; font-size: 16px; font-family: Inter; font-weight: 600; line-height: 24px; word-wrap: break-word">Humidity</div>
+        <div id="humidityValue" style="left: 99px; top: 626px; position: absolute; color: black; font-size: 40px; font-family: Inter; font-weight: 600; line-height: 44px; word-wrap: break-word"></div>
+        <div style="width: 389px; height: 172px; left: 526px; top: 564px; position: absolute; border: 1px black solid"></div>
+        <div style="width: 357px; left: 573px; top: 586px; position: absolute; color: black; font-size: 16px; font-family: Inter; font-weight: 600; line-height: 24px; word-wrap: break-word">Temperature</div>
+        <div id="temperatureValue" style="left: 573px; top: 626px; position: absolute; color: black; font-size: 40px; font-family: Inter; font-weight: 600; line-height: 44px; word-wrap: break-word"></div>
+        <div style="width: 389px; height: 172px; left: 67px; top: 564px; position: absolute; border: 1px black solid"></div>
+        <div style="width: 357px; left: 1016px; top: 586px; position: absolute; color: black; font-size: 16px; font-family: Inter; font-weight: 600; line-height: 24px; word-wrap: break-word">Light</div>
+        <div id="lightValue" style="left: 1016px; top: 626px; position: absolute; color: black; font-size: 40px; font-family: Inter; font-weight: 600; line-height: 44px; word-wrap: break-word"></div>
+        <div style="width: 389px; height: 172px; left: 984px; top: 564px; position: absolute; border: 1px black solid"></div>
+        <button id="lightOnButton" class="button" style="left: 75px; top: 800px; position: absolute;">Turn On Light</button>
+        <button id="lightOffButton" class="button" style="left: 275px; top: 800px; position: absolute;">Turn Off Light</button>
+    </div>
+
+    <script>
+        // Function to fetch and update data
+        function updateData() {
+            fetch('/device2')
+                .then(response => response.json())
+                .then(data => {
+                    data = data.data[0];
+                    const deviceIdValue = data.deviceId;
+                    const humidityValue = data.humidity;
+                    const temperatureValue = data.temperature;
+                    const lightValue = data.light;
+                    document.getElementById('humidityValue').innerText = humidityValue;
+                    document.getElementById('temperatureValue').innerText = temperatureValue;
+                    document.getElementById('lightValue').innerText = lightValue;
+                    document.getElementById('deviceIdValue').innerText = deviceIdValue;
+                })
+                .catch(error => console.error('Error fetching humidity data:', error));
+        }
+
+        // Function to handle turning on the light
+        function turnOnLight() {
+            fetch('/device2/light', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: 'on' })
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error turning on light:', error));
+        }
+
+        // Function to handle turning off the light
+        function turnOffLight() {
+            fetch('/device2/light', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: 'off' })
+            })
+            .then(response => response.json())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error turning off light:', error));
+        }
+
+        updateData();
+        setInterval(updateData, 3000);
+
+        // Event listeners for the buttons
+        document.getElementById('lightOnButton').addEventListener('click', turnOnLight);
+        document.getElementById('lightOffButton').addEventListener('click', turnOffLight);
+    </script>
+</body>
+</html>
