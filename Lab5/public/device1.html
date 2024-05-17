@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Data Charts</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .chart-container {
+            width: 80%;
+            max-width: 800px; /* Adjust the maximum width to make the chart smaller */
+            height: auto;
+            margin-bottom: 20px;
+        }
+        #controls {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin: 20px;
+        }
+        input, button {
+            margin: 5px;
+            padding: 10px;
+        }
+        #logs {
+            width: 500px;
+            height: 200px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 10px;
+            display: none;
+            margin-left: 20px;
+        }
+        .log-entry {
+            display: block;
+            white-space: pre-wrap; /* Preserve whitespace formatting */
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <input type="date" id="startDate" placeholder="Start Date">
+        <input type="date" id="endDate" placeholder="End Date">
+        <button onclick="downloadCSV()">Download CSV</button>
+        <button onclick="toggleLogs()">See Logs</button>
+        <div id="logs"></div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="tempChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="humChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <canvas id="lightChart"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script>
+        // Initialize the charts
+        var tempCtx = document.getElementById('tempChart').getContext('2d');
+        var humCtx = document.getElementById('humChart').getContext('2d');
+        var lightCtx = document.getElementById('lightChart').getContext('2d');
+
+        var tempChart = new Chart(tempCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature',
+                    data: [],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Timestamp'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Temperature (°C)'
+                        }
+                    }
+                }
+            }
+        });
+
+        var humChart = new Chart(humCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Humidity',
+                    data: [],
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Timestamp'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Humidity (%)'
+                        }
+                    }
+                }
+            }
+        });
+
+        var lightChart = new Chart(lightCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Light',
+                    data: [],
+                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'second'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Timestamp'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Light (lux)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Function to fetch data from the server
+        function fetchData() {
+            fetch('/device1')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Fetched data:', data);
+                    if (!data.error && data.data.length > 0) {
+                        const latestData = data.data[0];
+
+                        const temperature = parseFloat(latestData.temperature);
+                        const humidity = parseFloat(latestData.humidity);
+                        const light = parseFloat(latestData.light);
+                        const timestamp = new Date(latestData.timestamp);
+
+                        if (!isNaN(temperature) && !isNaN(humidity) && !isNaN(light) && timestamp) {
+                            tempChart.data.labels.push(timestamp);
+                            tempChart.data.datasets[0].data.push(temperature);
+                            humChart.data.labels.push(timestamp);
+                            humChart.data.datasets[0].data.push(humidity);
+                            lightChart.data.labels.push(timestamp);
+                            lightChart.data.datasets[0].data.push(light);
+
+                            tempChart.update();
+                            humChart.update();
+                            lightChart.update();
+
+                            const logEntry = `Timestamp: ${timestamp}, Temperature: ${temperature}, Humidity: ${humidity}, Light: ${light}\n`;
+                            const logsDiv = document.getElementById('logs');
+                            const logElement = document.createElement('div');
+                            logElement.classList.add('log-entry');
+                            logElement.textContent = logEntry;
+                            logsDiv.appendChild(logElement);
+                        } else {
+                            console.error('Invalid data:', latestData);
+                        }
+                    } else {
+                        console.error('No data available or error in data format');
+                    }
+                })
+                .catch(error => console.error('Error fetching data:', error));
+        }
+
+        setInterval(fetchData, 2000);
+
+        function downloadCSV() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            csvContent += 'Timestamp,Temperature,Humidity,Light\n';
+
+            for (let i = 0; i < tempChart.data.labels.length; i++) {
+                const timestamp = tempChart.data.labels[i];
+                if ((!startDate || new Date(timestamp) >= new Date(startDate)) && 
+                    (!endDate || new Date(timestamp) <= new Date(endDate))) {
+                    const temperature = tempChart.data.datasets[0].data[i];
+                    const humidity = humChart.data.datasets[0].data[i];
+                    const light = lightChart.data.datasets[0].data[i];
+                    csvContent += `${timestamp},${temperature},${humidity},${light}\n`;
+                }
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', 'device_data.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function toggleLogs() {
+            const logsDiv = document.getElementById('logs');
+            logsDiv.style.display = logsDiv.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

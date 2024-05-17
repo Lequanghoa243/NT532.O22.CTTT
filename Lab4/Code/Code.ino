@@ -60,7 +60,7 @@ void postDataToServer() {
     http.begin(client, postServerName);
     http.addHeader("Content-Type", "application/json");
 
-    String httpRequestData = "{\"deviceId\":\"1\", \"temperature\":\"" + String(temperature) +
+    String httpRequestData = "{\"deviceId\":\"2\", \"temperature\":\"" + String(temperature) +
                              "\", \"humidity\":\"" + String(humidity) +
                              "\", \"light\":\"" + String(lightLevel) + "\"}";
 
